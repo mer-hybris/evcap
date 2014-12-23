@@ -1,0 +1,93 @@
+#!/bin/sh
+
+#
+# Copyright (C) 2014 Jolla Ltd.
+# Contact: Kalle Jokiniemi <kalle.jokiniemi@jolla.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+
+print_help()
+{
+	printf "\nevcap - tool for checking input device capabilities\n\n"
+	printf "USAGE:\n"
+	printf "        evcap <event-device-sysfs-path>\n"
+	printf "                * Print event device's capabilities\n\n"
+	printf "        evcap <event-device-sysfs-path> MASK OPTIONS\n"
+	printf "                * Check if MASK OPTIONS match with device's capabilities\n\n"
+	printf "MASK OPTIONS:\n\n"
+	printf "        <type> <mask>  <type> [abs, ev, ff, key, led, msc, rel, snd, sw]\n"
+	printf "                       <mask> hexadecimal bitmask you want to match to\n\n"
+	printf "EXAMPLES:\n\n"
+	printf "        # check event0 device for EV_SYN and ABS_X and ABS_Y\n"
+	printf "        evcap /sys/class/input/event0 ev 1 abs 3\n\n"
+	printf "        # In udev rule PROGRAM= section you could have something like this:\n"
+	printf "        PROGRAM=/usr/sbin/evcap /sys\$devpath abs $[ 1 << 53 ]\n"
+	printf "        # Now you would have \"true\" in udev RESULT if PROGRAM matched\n\n"
+}
+
+get_caps()
+{
+	unset FULL_CAPS
+	RAW_CAPS=`cat $1`
+
+	for word in $RAW_CAPS; do
+		FULL_CAPS=$FULL_CAPS`printf "%08x" 0x$word`
+	done
+}
+
+if [ $# -eq 0 ]; then
+	print_help
+	exit 1
+fi
+
+[ ! -d $1 ] && echo "Invalid device sysfs directory \"$1\"" && exit 1
+
+CAP_DIR=$1/device/capabilities
+
+if [ $# -eq 1 ]; then
+	CAP_FILES_ALL="abs  ev  ff  key  led  msc  rel  snd  sw"
+	for cap in $CAP_FILES_ALL; do
+		get_caps $CAP_DIR/$cap
+		printf "%06s: %s\n" $cap $FULL_CAPS
+	done
+	exit 0
+fi
+
+shift
+
+# For sake of performace, we don't check input parameters, beware!
+
+while [ $# -gt 0 ]; do
+	get_caps $CAP_DIR/$1
+	caps=0x$FULL_CAPS
+	mask=0x$2
+
+	masked_caps=`printf "%x" $(($caps & $mask))`
+	if [ $masked_caps != $2 ]; then
+		echo "false"
+		exit 1
+	fi
+	shift 2
+done
+
+echo "true"
+exit 0
+
+

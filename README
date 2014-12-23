@@ -1,0 +1,17 @@
+evcap is a tool mainly for automating udev rules for input devices.
+
+run evcap without parameters for the in-built help.
+
+The normal use pattern is that you check in PROGRAM part of a udev rule
+the event device capabilities with evcap, and if they matched (i.e.
+RESULT=="true"), you can symlink that device as your
+default "touchscreen", or "keyboard" or what ever you need.
+
+Here is an example udev rule that checks for ABS_MT_POSITION_X,
+ABS_MT_POSITION_Y, EV_SYN, and EV_ABS capabilities to find a touchscreen:
+
+KERNEL=="event*", SUBSYSTEM=="input", ACTION=="add", PROGRAM="/usr/sbin/evcap /sys$devpath abs 60000000000000 ev 9", RESULT=="true", SYMLINK+="touchscreen"
+
+When the right kind of device appears, it is symlinked as "/dev/touchscreen" for
+standardized path in filesystem.
+
