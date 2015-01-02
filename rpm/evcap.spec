@@ -5,6 +5,7 @@ Release:    1
 Group:      System/Boot
 License:    MIT
 Source0:    %{name}-%{version}.tar.gz
+BuildArch:  noarch
 
 %description
 %{summary}.
